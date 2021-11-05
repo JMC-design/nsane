@@ -356,14 +356,3 @@
   (let ((opcode 10)
 	(stream (usocket:socket-stream socket)))
     (write-word opcode stream)))
-
-;;;; junk?
-
-(defun sane-word (int)
-  (when (> int #xFFFFFFFF)
-    (error "too large to fit in a word."))
-  (rotatef (ldb (byte 8 0) int)(ldb (byte 8 24) int))
-  (rotatef (ldb (byte 8 8) int)(ldb (byte 8 16) int))
-  int)
-
-
