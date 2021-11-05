@@ -1,7 +1,7 @@
 (defpackage #:nsane
   (:use :cl)
   (:shadow cl:write-string)
-  (:export #:+status-codes+
+  (:export #:*socket*
 	   ;; device
 	   #:device
 	   #:device-name
