@@ -224,7 +224,8 @@
     (write-sequence version stream)
     (write-sequence (sane-string name) stream)
     (force-output stream)
-    (values (aref +status-codes+ (read-word stream))
+    (values socket
+	    (aref +status-codes+ (read-word stream))
 	    (reverse (list (nibbles:read-ub16/be stream)
 			   (read-byte stream)
 			   (read-byte stream))))))
