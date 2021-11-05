@@ -15,7 +15,7 @@
 	   #:option-type
 	   #:option-unit
 	   #:option-size
-	   #:option-cap
+	   #:option-capabilities
 	   #:option-constraint-type
 	   #:option-constraint
 	   ;;scan format
@@ -38,18 +38,7 @@
 	   #:exit))
 (in-package #:nsane)
 
-(defparameter +rpc-codes+
-  #(:init
-    :get-devices
-    :openc
-    :closec
-    :get-option-descriptors
-    :control-option
-    :get-parameters
-    :start
-    :cancel
-    :authorize
-    :exit))
+(defvar *socket*)
 
 ;;remove prepended status? don't copy api and use description?
 (defparameter +status-codes+
@@ -104,23 +93,23 @@
     :reload-options
     :reload-parameters))
 
+;;;; Returned structures
 
-
-(declaim (optimize debug))
 (defstruct device
   name
   vendor
   model
   type)
 
-(defstruct (option (:constructor option-descriptor (name title description type unit size cap constraint-type constraint)))
+(defstruct (option (:constructor option-descriptor
+		       (name title description type unit size capabilities constraint-type constraint)))
   name
   title
   description
   type
   unit
   size
-  cap
+  capabilities
   constraint-type
   constraint)
 
@@ -131,9 +120,6 @@
   pixels-per-line
   lines
   depth)
-
-(defvar *socket* )
-(defvar *stream* )
 
 ;;;; Accessors
 
@@ -155,9 +141,14 @@
   (multiple-value-bind (int decimal) (truncate real)
     (write-word (logior int (ash (round (* decimal #xFFFF )) 16)) stream)))
 
+(defun sane-string (string)
+  (let* ((length (1+ (length string)))
+	 (array (make-array (+ 4 length) :initial-contents `(0 0 0 ,length ,@(map 'list #'char-code string) 0)
+					 :element-type '(unsigned-byte 8))))
+    array))
 (defun read-string (stream)
-  (let* ((length (u:fp (read-word stream)))
-	 (array (u:fp(make-array length :element-type '(unsigned-byte 8)))))
+  (let* ((length (read-word stream))
+	 (array (make-array length :element-type '(unsigned-byte 8))))
     (read-sequence array stream)
     (map 'string #'code-char (remove 0 array))))
 (defun write-string (string stream)
@@ -187,22 +178,19 @@
    :type (read-string stream)))
 
 (defun read-option-descriptor (stream)
-  (let* ((name (u:fp (read-string stream)))
-	 (title  (u:fp (read-string stream)))
-	 (description  (u:fp (read-string stream)))
-	 (type  (u:fp(aref +value-type+ (read-word stream))))
-	 (unit  (u:fp(aref +value-unit+ (read-word stream))))
-	 (size  (u:fp (read-word stream)))
-	 (cap   (decode-mask (read-word stream) +capabilities+))
-	 (constraint-type  (u:fp (read-word stream)))
+  (let* ((name (read-string stream))
+	 (title (read-string stream))
+	 (description (read-string stream))
+	 (type (aref +value-type+ (read-word stream)))
+	 (unit (aref +value-unit+ (read-word stream)))
+	 (size (read-word stream))
+	 (cap (decode-mask (read-word stream) +capabilities+))
+	 (constraint-type (read-word stream))
 	 (constraint  (case constraint-type
 			(0 nil)
-			(1 (list (read-word stream)(read-word stream)(read-word stream) (read-word stream)))
-			(2 (let  ((length (read-word stream)))
-			     (loop :repeat length :collect (u:fp (read-word stream)))))
-			(3 (let  ((length (read-word stream)))
-			     (loop :repeat length
-				   :for string := (u:fp(read-string stream)) :collect string))))))
+			(1 (list (read-word stream)(read-word stream)(read-word stream) (read-word stream))) ;get rid of last word?
+			(2 (loop :repeat (read-word stream) :collect (read-word stream)))
+			(3 (loop :repeat (read-word stream) :collect (read-string stream))))))
     (option-descriptor name title description type unit size cap constraint-type constraint)))
 
 (defun read-parameters (stream)
@@ -225,34 +213,38 @@
 		 :for read-length := (read-sequence temp stream)
 		 :collect temp))))
 
-;;;; Protocol 
+;;;; Protocol https://sane-project.gitlab.io/standard/net.html
 
 (defun init (&optional (host #(127 0 0 1)) (port 6566) (name "cl-sane"))
   (let* ((opcode 0)
-	 (version #(1 0 0 3)))
-    (setf *socket* (usocket:socket-connect host port :element-type '(unsigned-byte 8))
-	  *stream* (usocket:socket-stream *socket*))
-    (write-word opcode *stream*)
-    (write-sequence version *stream*)
-    (write-sequence (sane-string name) *stream*)
-    (force-output *stream*)
-    (values (aref +status-codes+ (read-word *stream*))
-	    (reverse (list (nibbles:read-ub16/be *stream*)
-			   (read-byte *stream*)
-			   (read-byte *stream*))))))
+	 (version #(1 0 0 3))
+	 (socket (usocket:socket-connect host port :element-type '(unsigned-byte 8)))
+	 (stream (usocket:socket-stream socket)))
+    (write-word opcode stream)
+    (write-sequence version stream)
+    (write-sequence (sane-string name) stream)
+    (force-output stream)
+    (values (aref +status-codes+ (read-word stream))
+	    (reverse (list (nibbles:read-ub16/be stream)
+			   (read-byte stream)
+			   (read-byte stream))))))
 
 (defun get-devices ()
-  (write-word 1 *stream*)
-  (force-output *stream*)
-  (let* ((status (read-word *stream*))
-	 (is-null (read-word *stream*))
-	 (pointer (read-word *stream*)))
-    (if (= 1 is-null)
-	:no-devices
-	(loop :for device := (u:fp (read-device *stream*))
-	      :for next := (u:fp (read-word *stream*))
-	      :collect device
-	      :until (= next 1)))))
+  (let ((opcode 1)
+	(stream (usocket:socket-stream *socket*)))
+    (write-word opcode stream)
+    (force-output stream)
+    (let* ((status (aref +status-codes+ (read-word stream)))
+	   (is-null (read-word stream))
+	   (pointer (read-word stream)))
+      (declare (ignore pointer))
+      (if (= 1 is-null)
+	  :no-devices
+	  (values (loop :for device :=  (read-device stream)
+			:for next :=  (read-word stream)
+			:collect device
+			:until (= next 1))
+		  status)))))
 
 (defun openc (device &optional (socket *socket*))
   (let ((opcode 2)
@@ -260,9 +252,9 @@
     (write-word opcode stream)
     (write-sequence (sane-string (device-name device)) stream)
     (force-output stream)
-    (let ((status (u:fp (read-word stream)))
-	  (handle (u:fp (read-word stream)))
-	  (resource (u:fp (read-string stream))))
+    (let ((status (read-word stream))
+	  (handle (read-word stream))
+	  (resource (read-string stream)))
       (values handle
 	      (aref +status-codes+ status)
 	      resource))))
@@ -277,13 +269,13 @@
 
 (defun get-option-descriptors (handle)
   (let ((opcode 4))
-    (write-word opcode *stream*)
-    (write-word handle *stream*)
-    (force-output *stream*)
-    (let ((length (read-word *stream*))
-	  (spacer (read-word *stream*)))
-      (apply #'vector (loop :repeat length :for x :from 1 :collect (u:fp (read-option-descriptor *stream*))
-			    :do (unless (= length x) (read-word *stream*)))))))
+    (write-word opcode stream)
+    (write-word handle stream)
+    (force-output stream)
+    (let ((length (read-word stream))
+	  (spacer (read-word stream)))
+      (apply #'vector (loop :repeat length :for x :from 1 :collect (u:fp (read-option-descriptor stream))
+			    :do (unless (= length x) (read-word stream)))))))
 
 ;; size is in bytes not words
 (defun control-option (handle option action type size value)
@@ -360,9 +352,9 @@
     (write-string user stream)
     (write-string password stream)))
 
-(defun exit ()
+(defun exit (&optional (socket *socket*))
   (let ((opcode 10)
-	(stream (usocket:socket-stream *stream*)))
+	(stream (usocket:socket-stream socket)))
     (write-word opcode stream)))
 
 ;;;; junk?
@@ -374,7 +366,4 @@
   (rotatef (ldb (byte 8 8) int)(ldb (byte 8 16) int))
   int)
 
-(defun sane-string (string)
-  (let* ((length (1+ (length string)))
-	(array (make-array (+ 4 length) :initial-contents `(0 0 0 ,length ,@(map 'list #'char-code string) 0) :element-type '(unsigned-byte 8))))
-    array))
+
