@@ -1,6 +1,8 @@
 (defpackage #:nsane
   (:use :cl)
-  (:shadow cl:write-string)
+  (:shadow cl:write-string
+	   cl:open
+	   cl:close)
   (:export #:*socket*
 	   ;; device
 	   #:device
@@ -250,7 +252,7 @@
 			:until (= next 1))
 		  status)))))
 
-(defun openc (device &optional (socket *socket*))
+(defun open (device &optional (socket *socket*))
   (let ((opcode 2)
 	(stream (usocket:socket-stream socket)))
     (write-word opcode stream)
@@ -263,7 +265,7 @@
 	      (aref +status-codes+ status)
 	      resource))))
 
-(defun closec (handle  &optional (socket *socket*))
+(defun close (handle  &optional (socket *socket*))
   (let ((opcode 3)
 	(stream (usocket:socket-stream socket)))
     (write-word opcode stream)
