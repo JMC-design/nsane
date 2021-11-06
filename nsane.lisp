@@ -269,7 +269,8 @@
     (read-word stream)))
 
 (defun get-option-descriptors (handle)
-  (let ((opcode 4))
+  (let ((opcode 4)
+	(stream (usocket:socket-stream *socket*)))
     (write-word opcode stream)
     (write-word handle stream)
     (force-output stream)
