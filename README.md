@@ -7,4 +7,4 @@ There is one additional function besides the protocol, RETRIEVE-SCAN that will r
 
 nsane:\*socket\* needs to be bound by a socket returned by nsane:init before any other protocol functions are used.
 
-Functions follow the naming convention of the protocol with SANE_NET_ dropped from the function and then kebobbed, e.g. SANE_NET_INIT becomes nsane:init .
+Functions follow the naming convention of the protocol with SANE_NET_ dropped from the function and then kebobbed, e.g. SANE_NET_GET_OPTION_DESCRIPTORS becomes nsane:get-option-descriptors.
