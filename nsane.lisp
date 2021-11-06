@@ -226,7 +226,8 @@
     (force-output stream)
     (values socket
 	    (aref +status-codes+ (read-word stream))
-	    (reverse (list (nibbles:read-ub16/be stream)
+	    (reverse (list (+ (ash (read-byte stream) 8)
+			      (read-byte stream))
 			   (read-byte stream)
 			   (read-byte stream))))))
 
