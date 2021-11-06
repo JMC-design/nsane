@@ -29,8 +29,8 @@
 	   ;; protocol
 	   #:init
 	   #:get-devices
-	   #:openc
-	   #:closec
+	   #:open
+	   #:close
 	   #:get-option-descriptors
 	   #:control-option
 	   #:get-parameters
