@@ -35,7 +35,9 @@
 	   #:start
 	   #:cancel
 	   #:authorize
-	   #:exit))
+	   #:exit
+	   ;;convenience
+	   #:retrieve-scan))
 (in-package #:nsane)
 
 (defvar *socket*)
