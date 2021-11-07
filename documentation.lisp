@@ -13,11 +13,11 @@
       "Common Lisp implementation of the SANE network protocol~%~
 
        This package is NOT meant to be :USE'd This is not a frontend. It is an implementation ~
-       of the protocol in common lisp so anybody can write a frontend with it. There is one ~
+       of the protocol in Common Lisp so anybody can write a frontend with it. There is one ~
        additional function besides the protocol, RETRIEVE-SCAN, that will retrieve and return a ~
        scan as a vector of (unsigned-byte 8).~%~
 
-       NSANE:*SOCKET* needs to be bound to a socket returned by nsane:init before any other ~
+       NSANE:*SOCKET* needs to be bound to a socket returned by NSANE:INIT before any other ~
        protocol functions are used.~%~
 
        Functions follow the naming convention of the protocol with SANE_NET_ dropped from the ~
@@ -29,7 +29,7 @@
 (document
  :functions
  '((init .
-      "Establishes a connection to a sane network daemon. Host, port, and name can be specified ~
+      "Establishes a connection to a SANE network daemon. Host, port, and name can be specified ~
        by keywords, Defaults to localhost:6566. name should be a unique name restricted to ascii ~
        characters, defaults to \"nsane\". Returns multiple values, a socket to be bound to ~
        NSANE:*SOCKET*, a status code, and the version of network daemon. ")
@@ -43,7 +43,7 @@
 
    (close .
       "Takes a handle and releases the connection to the device. Does not close the socket ~
-       connection to the sane daemon.")
+       connection to the SANE daemon.")
 
    (get-option-parameters .
       "Returns a vector of NSANE:OPTION structs. An options position in the vector is used to ~
@@ -74,7 +74,7 @@
        and PASSWORD strings to authorize access to the scanner.")
    
    (exit .
-      "Closes the connection to the sane network daemon and closes the socket.")
+      "Closes the connection to the SANE network daemon and closes the socket.")
    
    (retrieve-scan .
       "Takes a PORT returned by NSANE:START and optional HOST (defaults to 127.0.0.1 and should ~

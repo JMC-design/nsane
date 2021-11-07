@@ -99,7 +99,7 @@
 
 ;;;; Returned structures
 
-(defstruct device
+(defstruct (device (:constructor device (name vendor model type)))
   name
   vendor
   model
@@ -219,7 +219,7 @@
 
 ;;;; Protocol https://sane-project.gitlab.io/standard/net.html
 
-(defun init (&optional (host #(127 0 0 1)) (port 6566) (name "cl-sane"))
+(defun init (&key (host #(127 0 0 1)) (port 6566) (name "nsane"))
   (let* ((opcode 0)
 	 (version #(1 0 0 3))
 	 (socket (usocket:socket-connect host port :element-type '(unsigned-byte 8)))
@@ -285,7 +285,7 @@
 			    :do (unless (= length x) (read-word stream)))))))
 
 ;; size is in bytes not words
-(defun control-option (handle option action type size value)
+(defun control-option (handle option action type size &optional (value 0))
   (let ((opcode 5)
 	(stream (usocket:socket-stream *socket*)))
     (declare (type (member :get :set :auto) action))
@@ -357,9 +357,12 @@
     (write-word opcode stream)
     (write-string resource stream)
     (write-string user stream)
-    (write-string password stream)))
+    (write-string password stream)
+    (force-output stream)))
 
 (defun exit (&optional (socket *socket*))
   (let ((opcode 10)
 	(stream (usocket:socket-stream socket)))
-    (write-word opcode stream)))
+    (write-word opcode stream)
+    (force-output stream)
+    (usocket:socket-close socket)))
