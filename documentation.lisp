@@ -22,15 +22,15 @@
 
        Functions follow the naming convention of the protocol with SANE_NET_ dropped from the ~
        function and then kebobbed, e.g. SANE_NET_GET_OPTION_DESCRIPTORS becomes ~
-       nsane:get-option-descriptors.~%~
+       NSANE:GET-OPTION-DESCRIPTORS.~%~
 
        The protocol description is available at https://sane-project.gitlab.io/standard/net.html")))
 
 (document
  :functions
  '((init .
-      "Establishes a connection to a SANE network daemon. Host, port, and name can be specified ~
-       by keywords, Defaults to localhost:6566. name should be a unique name restricted to ascii ~
+      "Establishes a connection to a SANE network daemon. HOST, PORT, and NAME can be specified ~
+       by keywords, Defaults to localhost:6566. NAME should be a unique name restricted to ascii ~
        characters, defaults to \"nsane\". Returns multiple values, a socket to be bound to ~
        NSANE:*SOCKET*, a status code, and the version of network daemon. ")
    
@@ -39,18 +39,18 @@
        device. Raise an issue if this happens.")
 
    (open .
-      "Takes a device as returned by GET-DEVICES and returns a handle to refer to the device.")
+      "Takes a DEVICE struct as returned by GET-DEVICES and returns a handle to refer to the device.")
 
    (close .
-      "Takes a handle and releases the connection to the device. Does not close the socket ~
+      "Takes a HANDLE and releases the connection to the device. Does not close the socket ~
        connection to the SANE daemon.")
 
-   (get-option-parameters .
+   (get-option-descriptors .
       "Returns a vector of NSANE:OPTION structs. An options position in the vector is used to ~
        identify the option in NSANE:CONTROL-OPTION.")
 
    (control-option .
-      "Takes a HANDLE returned by NSANE:OPEN, an OPTION represented by the position of the ~
+      "Takes a HANDLE returned by NSANE:OPEN, an OPTION, represented by the position of the ~
        option in the vector returned by NSANE:GET-OPTION-PARAMETERS, an ACTION of either ~
        :GET :SET :AUTO, TYPE and SIZE as returned by GET-OPTION-PARAMETERS, and optionally ~
        new VALUE for the OPTION. ")
@@ -78,5 +78,5 @@
    
    (retrieve-scan .
       "Takes a PORT returned by NSANE:START and optional HOST (defaults to 127.0.0.1 and should ~
-       be same host as passed to NSANE:INIT) and returns a vector of ub8s to be interpreted as ~
+       be same host as passed to NSANE:INIT), and returns a vector of ub8s to be interpreted as ~
        specified by NSANE:GET-PARAMETERS.")))
